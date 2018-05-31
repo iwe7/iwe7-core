@@ -12,9 +12,7 @@ import {
 } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 
-export function throwContentAlreadyAttachedError() {
-    throw Error('Attempting to attach content after content is already attached');
-}
+import { throwContentAlreadyAttachedError } from './util';
 
 @Injectable({
     providedIn: 'root'
