@@ -1,7 +1,4 @@
-/*
- * Public API Surface of iwe7-core
- */
-
 export * from './lib/iwe7-core.service';
 export * from './lib/iwe7-dom.service';
 export * from './lib/core-outlet';
+export * from './lib/util';

@@ -23,15 +23,14 @@ export class Iwe7DomService {
     private _viewContainerRef: ViewContainerRef;
     constructor(
         @Optional()
-        @Inject(DOCUMENT) public _doc: Document,
+        @Inject(DOCUMENT) public _doc: any,
         public componentFactoryResolver: ComponentFactoryResolver,
         public injector: Injector,
         public appRef: ApplicationRef,
     ) {
-        this.element = document.createElement('div');
-        document.body.appendChild(this.element);
+        this.element = this._doc.createElement('div');
+        this._doc.body.appendChild(this.element);
         this._portalHost = new DomPortalHost(this.element, this.componentFactoryResolver, this.appRef, this.injector);
-        console.log(this._portalHost);
     }
 
     attachComponent<T>(

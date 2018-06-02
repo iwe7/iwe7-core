@@ -5,7 +5,7 @@ import {
     EmbeddedViewRef, ElementRef,
     Injector, ɵComponentType as ComponentType,
     ViewContainerRef, TemplateRef, AfterViewInit,
-    ComponentFactoryResolver, ApplicationRef
+    ComponentFactoryResolver, ApplicationRef, Renderer2
 } from '@angular/core';
 import {
     BasePortalOutlet, PortalHostDirective,
@@ -15,126 +15,135 @@ import {
 
 import { throwContentAlreadyAttachedError } from './util';
 
-export abstract class CoreOutlet extends BasePortalOutlet {
-    host: BasePortalOutlet;
-    viewContainerRef: ViewContainerRef;
-    constructor(public injector: Injector) {
+export class ElementRefPortal<T> extends Portal<T> {
+    constructor(public ele: Element, public outletElement?: Element) {
         super();
-        this.viewContainerRef = this.injector.get(ViewContainerRef);
     }
+}
 
-    attachComponent<T>(
-        componentType: ComponentType<T>,
-        viewContainerRef?: ViewContainerRef,
-        injector?: Injector
-    ): ComponentRef<T> {
-        return this.attachComponentPortal(
-            this.createComponentPortal(componentType, viewContainerRef, injector)
-        );
+export class StringPortal<T> extends Portal<T> {
+    constructor(
+        public str: string,
+        public outlet: string | Element = 'span',
+        public classObj: { [key: string]: boolean } = {},
+        public styleObj: { [key: string]: any } = {}
+    ) {
+        super();
     }
+}
 
-    attachTemplate<C>(
-        template: TemplateRef<C>,
-        viewContainerRef?: ViewContainerRef,
-        context?: C
-    ): EmbeddedViewRef<C> {
-        return this.attachTemplatePortal(
-            this.createTemplatePortal(template, viewContainerRef, context)
-        );
+
+export abstract class CorePortalOutlet extends BasePortalOutlet {
+    attach(portal: Portal<any>): any {
+        if (portal instanceof ComponentPortal || portal instanceof TemplatePortal) {
+            return super.attach(portal);
+        } else if (portal instanceof ElementRefPortal) {
+            return this.attachmentElementRefPortal(portal);
+        } else if (portal instanceof StringPortal) {
+            return this.attachStringPortal(portal);
+        } else {
+            return this.attachmentOther(portal);
+        }
     }
+    abstract attachStringPortal<T>(portal: StringPortal<T>): any;
+    abstract attachmentOther<T>(portal: Portal<any>): any;
+    abstract attachmentElementRefPortal<T>(portal: ElementRefPortal<T>): Element;
+}
 
-    createComponentPortal<T>(
-        componentType: ComponentType<T>,
-        viewContainerRef?: ViewContainerRef,
-        injector?: Injector
-    ): ComponentPortal<T> {
-        return new ComponentPortal(
-            componentType,
-            viewContainerRef || this.viewContainerRef,
-            injector || this.injector
-        );
+export class CoreDomPortalHost extends CorePortalOutlet {
+    public elementRef: ElementRef;
+    public componentFactoryResolver: ComponentFactoryResolver;
+    public appRef: ApplicationRef;
+    public render: Renderer2;
+    public doc: Document;
+    constructor(
+        public injector: Injector,
+        public outletElement: HTMLElement
+    ) {
+        super();
+        this.elementRef = this.injector.get(ElementRef);
+        this.appRef = this.injector.get(ApplicationRef);
+        this.componentFactoryResolver = this.injector.get(ComponentFactoryResolver);
+        this.render = this.injector.get(Renderer2);
+        this.doc = this.injector.get(DOCUMENT);
     }
-
-    createTemplatePortal<C>(
-        template: TemplateRef<C>,
-        viewContainerRef?: ViewContainerRef,
-        context?: C
-    ): TemplatePortal<C> {
-        return new TemplatePortal(template, viewContainerRef || this.viewContainerRef, context);
+    attachmentOther<T>(portal: Portal<any>): Portal<any> {
+        return portal;
     }
-
+    attachStringPortal<T>(portal: StringPortal<any>): Element {
+        let span: Element;
+        if (portal.outlet) {
+            if (typeof portal.outlet === 'string') {
+                span = this.render.createElement(portal.outlet);
+            } else {
+                span = portal.outlet;
+            }
+        } else {
+            span = this.render.createElement('span');
+        }
+        for (const key in portal.classObj) {
+            if (portal.classObj[key]) {
+                this.render.addClass(span, key);
+            } else {
+                this.render.removeClass(span, key);
+            }
+        }
+        for (const key in portal.styleObj) {
+            this.render.setStyle(span, key, portal.styleObj[key]);
+        }
+        span.innerHTML = portal.str;
+        this.render.appendChild(this.outletElement, span);
+        return span;
+    }
+    attachmentElementRefPortal<T>(portal: ElementRefPortal<T>): Element {
+        if (portal.outletElement) {
+            this.render.appendChild(portal.outletElement, portal.ele);
+        } else {
+            this.render.appendChild(this.outletElement, portal.ele);
+        }
+        return portal.ele;
+    }
     attachComponentPortal<T>(portal: ComponentPortal<T>): ComponentRef<T> {
-        if (this.host.hasAttached()) {
-            throwContentAlreadyAttachedError();
+        const componentFactory = this.componentFactoryResolver.resolveComponentFactory(portal.component);
+        let componentRef: ComponentRef<T>;
+        if (portal.viewContainerRef) {
+            componentRef = portal.viewContainerRef.createComponent(
+                componentFactory,
+                portal.viewContainerRef.length,
+                portal.injector || portal.viewContainerRef.parentInjector);
+            this.setDisposeFn(() => componentRef.destroy());
+        } else {
+            componentRef = componentFactory.create(portal.injector || this.injector);
+            this.appRef.attachView(componentRef.hostView);
+            this.setDisposeFn(() => {
+                this.appRef.detachView(componentRef.hostView);
+                componentRef.destroy();
+            });
         }
-        return this.host.attachComponentPortal(portal);
+        this.outletElement.appendChild(this._getComponentRootNode(componentRef));
+        return componentRef;
     }
-
     attachTemplatePortal<C>(portal: TemplatePortal<C>): EmbeddedViewRef<C> {
-        if (this.host.hasAttached()) {
-            throwContentAlreadyAttachedError();
-        }
-        return this.host.attachTemplatePortal(portal);
+        const viewContainer = portal.viewContainerRef;
+        const viewRef = viewContainer.createEmbeddedView(portal.templateRef, portal.context);
+        viewRef.detectChanges();
+        viewRef.rootNodes.forEach(rootNode => this.outletElement.appendChild(rootNode));
+        this.setDisposeFn((() => {
+            const index = viewContainer.indexOf(viewRef);
+            if (index !== -1) {
+                viewContainer.remove(index);
+            }
+        }));
+        return viewRef;
     }
-}
 
-export abstract class CoreElementOutlet extends CoreOutlet {
-    public componentFactoryResolver: ComponentFactoryResolver;
-    public appRef: ApplicationRef;
-    public ele: ElementRef;
-    constructor(injector: Injector) {
-        super(injector);
-        this.componentFactoryResolver = this.injector.get(ComponentFactoryResolver);
-        this.appRef = this.injector.get(ApplicationRef);
-        this.ele = this.injector.get(ElementRef);
-        this.host = new DomPortalHost(this.ele.nativeElement, this.componentFactoryResolver, this.appRef, this.injector);
-    }
-}
-
-export abstract class DirectiveOutlet extends CoreElementOutlet {
-    constructor(
-        injector: Injector
-    ) {
-        super(injector);
-    }
-}
-
-export abstract class ComponentOutlet extends DirectiveOutlet {
-    constructor(
-        injector: Injector
-    ) {
-        super(injector);
-    }
-}
-
-export abstract class CoreRootDivOutlet extends CoreOutlet implements AfterViewInit {
-    public componentFactoryResolver: ComponentFactoryResolver;
-    public appRef: ApplicationRef;
-    constructor(injector: Injector) {
-        super(injector);
-        this.componentFactoryResolver = this.injector.get(ComponentFactoryResolver);
-        this.appRef = this.injector.get(ApplicationRef);
-    }
-    ngAfterViewInit() {
-        if (!this.host) {
-            const element = document.createElement('div');
-            document.body.appendChild(element);
-            this.host = new DomPortalHost(element, this.componentFactoryResolver, this.appRef, this.injector);
+    dispose(): void {
+        super.dispose();
+        if (this.outletElement.parentNode != null) {
+            this.outletElement.parentNode.removeChild(this.outletElement);
         }
     }
-}
-
-export abstract class CoreCdkOutlet extends CoreRootDivOutlet {
-    @ViewChild(PortalHostDirective)
-    set _portalHost(val: PortalHostDirective) {
-        this.host = val;
-    }
-    get _portalHost() {
-        return this.host as PortalHostDirective;
-    }
-    constructor(
-        injector: Injector
-    ) {
-        super(injector);
+    private _getComponentRootNode(componentRef: ComponentRef<any>): HTMLElement {
+        return (componentRef.hostView as EmbeddedViewRef<any>).rootNodes[0] as HTMLElement;
     }
 }
