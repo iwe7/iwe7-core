@@ -1,4 +1,4 @@
-import { filter, tap, map } from 'rxjs/operators';
+import { filter, tap, map, delay } from 'rxjs/operators';
 import { takeUntil, takeWhile, switchMap } from 'rxjs/operators';
 import { Subject, Observable, BehaviorSubject } from 'rxjs';
 import {
@@ -36,7 +36,8 @@ export class Iwe7CoreComponent implements
         } else {
             return this._cyc.get(name).pipe(
                 takeUntil(this.getCyc('onDestroy')),
-                filter(res => !!res)
+                filter(res => !!res),
+                delay(200)
             );
         }
     }
