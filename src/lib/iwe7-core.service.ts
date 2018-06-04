@@ -5,7 +5,6 @@ import { Injectable } from '@angular/core';
   providedIn: 'root'
 })
 export class Iwe7CoreService {
-
   constructor(
     public dom: Iwe7DomService
   ) { }
