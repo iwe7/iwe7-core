@@ -16,19 +16,20 @@ export class Iwe7CoreComponent implements
     OnDestroy {
     _cyc: Map<string, Subject<any>> = new Map();
     _zone: NgZone;
+    _hasChange: boolean = false;
     constructor(public injector: Injector) {
         this._zone = this.injector.get(NgZone);
     }
-    getCyc(name: string): Observable<any> {
+    getCyc(name: string, isSubject: boolean = false): Observable<any> {
         if (!this._cyc.has(name)) {
-            this.createCyc(name, name === 'onDestroy');
+            this.createCyc(name, isSubject);
         }
         if (name === 'onDestroy') {
             return this._cyc.get(name);
         } else if (name === 'ngOnChanges') {
             // 等到ngOnInit之后,执行ngOnChanges
             return this._cyc.get(name).pipe(
-                takeUntil(this.getCyc('onDestroy')),
+                takeUntil(this.getCyc('onDestroy', true)),
                 filter(res => !!res),
                 switchMap((changes: SimpleChanges) => {
                     return this.getCyc('ngOnInit').pipe(
@@ -38,15 +39,15 @@ export class Iwe7CoreComponent implements
             );
         } else {
             return this._cyc.get(name).pipe(
-                takeUntil(this.getCyc('onDestroy')),
+                takeUntil(this.getCyc('onDestroy', true)),
                 filter(res => !!res),
                 delay(200)
             );
         }
     }
-    setCyc(name: string, data: any) {
+    setCyc(name: string, data: any, isSubject: boolean = false) {
         if (!this._cyc.has(name)) {
-            this.createCyc(name, name === 'onDestroy');
+            this.createCyc(name, isSubject);
         }
         this._cyc.get(name).next(data);
         if (name === 'onDestroy') {
@@ -60,42 +61,55 @@ export class Iwe7CoreComponent implements
             this._cyc.set(name, new BehaviorSubject(false));
         }
     }
+    runOutsideAngular(fn: any) {
+        this._zone.runOutsideAngular(fn);
+    }
+    run(fn: any) {
+        this._zone.run(fn);
+    }
     ngOnChanges(changes: SimpleChanges) {
-        this._zone.runOutsideAngular(() => {
+        this.runOutsideAngular(() => {
             this.setCyc('ngOnChanges', changes);
+            this._hasChange = true;
         });
     }
     ngOnInit() {
-        this._zone.runOutsideAngular(() => {
+        this.runOutsideAngular(() => {
             this.setCyc('ngOnInit', this);
+            // 模拟没有@Input时触发ngOnChanges
+            if (!this._hasChange) {
+                this.setCyc('ngOnChanges', this);
+            }
         });
     }
     ngDoCheck() {
-        this._zone.runOutsideAngular(() => {
+        this.runOutsideAngular(() => {
             this.setCyc('ngDoCheck', this);
         });
     }
     ngAfterContentInit() {
-        this._zone.runOutsideAngular(() => {
+        this.runOutsideAngular(() => {
             this.setCyc('ngAfterContentInit', this);
         });
     }
     ngAfterContentChecked() {
-        this._zone.runOutsideAngular(() => {
+        this.runOutsideAngular(() => {
             this.setCyc('ngAfterContentChecked', this);
         });
     }
     ngAfterViewInit() {
-        this._zone.runOutsideAngular(() => {
+        this.runOutsideAngular(() => {
             this.setCyc('ngAfterViewInit', this);
         });
     }
     ngAfterViewChecked() {
-        this._zone.runOutsideAngular(() => {
+        this.runOutsideAngular(() => {
             this.setCyc('ngAfterViewChecked', this);
         });
     }
     ngOnDestroy() {
-        this.setCyc('ngOnDestroy', this);
+        this.runOutsideAngular(() => {
+            this.setCyc('ngOnDestroy', this, true);
+        });
     }
 }
