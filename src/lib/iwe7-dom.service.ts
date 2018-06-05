@@ -1,3 +1,6 @@
+import { Injectable } from '@angular/core';
 
-
-import { getDom } from 'iwe7-util';
+@Injectable()
+export class Iwe7DomService {
+    constructor() { }
+}

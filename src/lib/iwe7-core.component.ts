@@ -1,4 +1,4 @@
-import { Injector, NgZone } from '@angular/core';
+import { Injector, NgZone, ChangeDetectorRef } from '@angular/core';
 import { filter, tap, map, delay } from 'rxjs/operators';
 import { takeUntil, takeWhile, switchMap } from 'rxjs/operators';
 import { Subject, Observable, BehaviorSubject } from 'rxjs';
@@ -17,11 +17,16 @@ export class Iwe7CoreComponent implements
     _cyc: Map<string, Subject<any>> = new Map();
     _zone: NgZone;
     _hasChange: boolean = false;
+    _cd: ChangeDetectorRef;
     constructor(public injector: Injector) {
         this._zone = this.injector.get(NgZone);
+        this._cd = this.injector.get(ChangeDetectorRef);
     }
     getCyc(name: string, isSubject: boolean = false): Observable<any> {
         if (!this._cyc.has(name)) {
+            if (name === 'ngOnDestroy') {
+                isSubject = true;
+            }
             this.createCyc(name, isSubject);
         }
         if (name === 'onDestroy') {
@@ -41,7 +46,7 @@ export class Iwe7CoreComponent implements
             return this._cyc.get(name).pipe(
                 takeUntil(this.getCyc('onDestroy', true)),
                 filter(res => !!res),
-                delay(200)
+                delay(10)
             );
         }
     }
