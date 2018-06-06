@@ -146,7 +146,7 @@ export class Iwe7Core extends Iwe7Cyc implements
     }
 }
 
-export class Iwe7CoreComponent extends Iwe7Cyc { }
+export class Iwe7CoreComponent extends Iwe7Core { }
 
 
 export class Iwe7CoreControlValueAccessor extends Iwe7CoreComponent implements ControlValueAccessor {
