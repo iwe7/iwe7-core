@@ -45,7 +45,7 @@ export class Iwe7Cyc extends Iwe7Zone {
             return this._cyc.get(name);
         } else if (name === 'ngOnChanges') {
             // 等到ngOnInit之后,执行ngOnChanges
-            return this._cyc.get('ngOnChangess').pipe(
+            return this._cyc.get(name).pipe(
                 filter(res => isset(res)),
                 switchMap((changes: SimpleChanges) => {
                     return this.getCyc('ngOnInit', false, false).pipe(
