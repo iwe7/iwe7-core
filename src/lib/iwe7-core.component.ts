@@ -1,8 +1,10 @@
+import { ControlValueAccessor } from '@angular/forms';
 import { Constructor } from './interface';
 import { Injector, NgZone, ChangeDetectorRef } from '@angular/core';
 import { filter, tap, map, delay } from 'rxjs/operators';
 import { takeUntil, takeWhile, switchMap } from 'rxjs/operators';
 import { Subject, Observable, BehaviorSubject } from 'rxjs';
+import { isset } from 'iwe7-util';
 import {
     OnInit, OnChanges,
     AfterViewInit, AfterContentChecked,
@@ -44,7 +46,7 @@ export class Iwe7Cyc extends Iwe7Zone {
         } else if (name === 'ngOnChanges') {
             // 等到ngOnInit之后,执行ngOnChanges
             return this._cyc.get('ngOnChangess').pipe(
-                filter(res => !!res),
+                filter(res => isset(res)),
                 switchMap((changes: SimpleChanges) => {
                     return this.getCyc('ngOnInit', false, false).pipe(
                         map(res => changes)
@@ -81,7 +83,7 @@ export class Iwe7Cyc extends Iwe7Zone {
         if (isSubject) {
             this._cyc.set(name, new Subject());
         } else {
-            this._cyc.set(name, new BehaviorSubject(false));
+            this._cyc.set(name, new BehaviorSubject(undefined));
         }
     }
 }
@@ -145,3 +147,24 @@ export class Iwe7Core extends Iwe7Cyc implements
 }
 
 export class Iwe7CoreComponent extends Iwe7Cyc { }
+
+
+export class Iwe7CoreControlValueAccessor extends Iwe7CoreComponent implements ControlValueAccessor {
+    _onChange: any = (_: any) => { };
+    _onTouched: any = (_: any) => { };
+
+    writeValue(obj: any): void {
+        if (obj) {
+            this.setCyc('ngWriteValue', obj);
+        }
+    }
+    registerOnChange(fn: any): void {
+        this._onChange = fn;
+    }
+    registerOnTouched(fn: any): void {
+        this._onTouched = fn;
+    }
+    setDisabledState(isDisabled: boolean): void {
+        this.setCyc('ngSetDisabledState', isDisabled);
+    }
+}

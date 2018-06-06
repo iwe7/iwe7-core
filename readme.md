@@ -19,25 +19,33 @@
 | iwe7-video         | 视频播放      | https://github.com/iwe7/iwe7-video         |
 
 
-- CoreOutlet
-核心容器，提供基础功能
 
-- CoreCdkOutlet
-用于模板内包含 
-```html
-<ng-template [cdkPortalOutlet]="greeting"></ng-template>
+- 案例
+```ts
+import { Iwe7CoreControlValueAccessor } from 'iwe7-core';
+
+@Component({
+    ...,
+    providers: {
+        provide: NG_VALUE_ACCESSOR,
+        useExisting: forwardRef(() => TestComponent),
+        multi: true
+    }
+})
+export class TestComponent extends Iwe7CoreControlValueAccessor {
+    value: any;
+    constructor(injector: Injector){
+        super(injector);
+        this.getCyc('ngWriteValue').pipe(
+            tap(res=> {
+                // 初始化赋值
+                this.value = res;
+            })
+        ).subscribe();
+    }
+}
+
+
+
 ```
-的容器
-
-- CoreRootDivOutlet
-document.body内的div容器
-
-- ComponentOutlet
-component容器
-
-- DirectiveOutlet
-directive容器
-
-- CoreElementOutlet
-elementRef容器
 
