@@ -5,3 +5,6 @@ export interface KeyValueInterface {
 export interface KeyBooleanInterface {
     [key: string]: boolean;
 }
+
+export type Constructor<T> = new (...args: any[]) => T;
+

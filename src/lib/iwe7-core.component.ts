@@ -1,3 +1,4 @@
+import { Constructor } from './interface';
 import { Injector, NgZone, ChangeDetectorRef } from '@angular/core';
 import { filter, tap, map, delay } from 'rxjs/operators';
 import { takeUntil, takeWhile, switchMap } from 'rxjs/operators';
@@ -9,20 +10,29 @@ import {
     AfterContentInit, AfterViewChecked,
     OnDestroy
 } from '@angular/core';
-export class Iwe7CoreComponent implements
-    OnInit, OnChanges,
-    AfterViewInit, AfterContentChecked,
-    DoCheck, AfterContentInit, AfterViewChecked,
-    OnDestroy {
-    _cyc: Map<string, Subject<any>> = new Map();
+
+export class Iwe7Base { }
+
+export class Iwe7Zone extends Iwe7Base {
     _zone: NgZone;
-    _hasChange: boolean = false;
-    _cd: ChangeDetectorRef;
-    constructor(public injector: Injector) {
-        this._zone = this.injector.get(NgZone);
-        this._cd = this.injector.get(ChangeDetectorRef);
+    runOutsideAngular<T>(fn: (...args: any[]) => T): T {
+        return this._zone.runOutsideAngular(fn);
     }
-    getCyc(name: string, isSubject: boolean = false): Observable<any> {
+    run<T>(fn: (...args: any[]) => T, applyThis?: any, applyArgs?: any[]): T {
+        return this._zone.run(fn, applyThis, applyArgs);
+    }
+}
+
+export type Iwe7CycType =
+    'ngOnChanges' | 'ngOnInit' | 'ngDoCheck' |
+    'ngAfterContentInit' | 'ngAfterContentChecked' |
+    'ngAfterViewInit' | 'ngAfterViewChecked' | 'ngOnDestroy' |
+    'ngSetDisabledState' | 'ngWriteValue' | 'ngStyle' | 'ngLocation' |
+    string;
+
+export class Iwe7Cyc extends Iwe7Zone {
+    _cyc: Map<Iwe7CycType, Subject<any>> = new Map();
+    getCyc(name: Iwe7CycType, isSubject: boolean = false, hasTakeUntil: boolean = true): Observable<any> {
         if (!this._cyc.has(name)) {
             if (name === 'ngOnDestroy') {
                 isSubject = true;
@@ -33,24 +43,31 @@ export class Iwe7CoreComponent implements
             return this._cyc.get(name);
         } else if (name === 'ngOnChanges') {
             // 等到ngOnInit之后,执行ngOnChanges
-            return this._cyc.get(name).pipe(
-                takeUntil(this.getCyc('onDestroy', true)),
+            return this._cyc.get('ngOnChangess').pipe(
                 filter(res => !!res),
                 switchMap((changes: SimpleChanges) => {
-                    return this.getCyc('ngOnInit').pipe(
+                    return this.getCyc('ngOnInit', false, false).pipe(
                         map(res => changes)
                     );
                 })
             );
         } else {
-            return this._cyc.get(name).pipe(
-                takeUntil(this.getCyc('onDestroy', true)),
+            const res = this._cyc.get(name).pipe(
                 filter(res => !!res),
-                delay(10)
             );
+            // 是否takeUntil
+            if (hasTakeUntil) {
+                return res.pipe(
+                    takeUntil(this.getCyc('onDestroy', true)),
+                    delay(5)
+                );
+            } else {
+                return res;
+            }
         }
     }
-    setCyc(name: string, data: any, isSubject: boolean = false) {
+    // 没毛病
+    setCyc(name: Iwe7CycType, data: any, isSubject: boolean = false): void {
         if (!this._cyc.has(name)) {
             this.createCyc(name, isSubject);
         }
@@ -59,18 +76,27 @@ export class Iwe7CoreComponent implements
             this._cyc.get(name).complete();
         }
     }
-    createCyc(name: string, isSubject: boolean = false) {
+    // 没毛病
+    createCyc(name: Iwe7CycType, isSubject: boolean = false): void {
         if (isSubject) {
             this._cyc.set(name, new Subject());
         } else {
             this._cyc.set(name, new BehaviorSubject(false));
         }
     }
-    runOutsideAngular(fn: any) {
-        this._zone.runOutsideAngular(fn);
-    }
-    run(fn: any) {
-        this._zone.run(fn);
+}
+
+export class Iwe7Core extends Iwe7Cyc implements
+    OnInit, OnChanges,
+    AfterViewInit, AfterContentChecked,
+    DoCheck, AfterContentInit, AfterViewChecked,
+    OnDestroy {
+    _cd: ChangeDetectorRef;
+    _hasChange: boolean = false;
+    constructor(public injector: Injector) {
+        super();
+        this._zone = this.injector.get(NgZone);
+        this._cd = this.injector.get(ChangeDetectorRef);
     }
     ngOnChanges(changes: SimpleChanges) {
         this.runOutsideAngular(() => {
@@ -81,7 +107,6 @@ export class Iwe7CoreComponent implements
     ngOnInit() {
         this.runOutsideAngular(() => {
             this.setCyc('ngOnInit', this);
-            // 模拟没有@Input时触发ngOnChanges
             if (!this._hasChange) {
                 this.setCyc('ngOnChanges', this);
             }
@@ -118,3 +143,5 @@ export class Iwe7CoreComponent implements
         });
     }
 }
+
+export class Iwe7CoreComponent extends Iwe7Cyc { }
