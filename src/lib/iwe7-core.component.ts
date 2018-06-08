@@ -1,22 +1,31 @@
 import { ControlValueAccessor } from '@angular/forms';
-import { Constructor } from './interface';
-import { Injector, NgZone, ChangeDetectorRef } from '@angular/core';
-import { filter, tap, map, delay } from 'rxjs/operators';
-import { takeUntil, takeWhile, switchMap } from 'rxjs/operators';
+import { filter, map, delay } from 'rxjs/operators';
+import { takeUntil, switchMap } from 'rxjs/operators';
 import { Subject, Observable, BehaviorSubject } from 'rxjs';
 import { isset } from 'iwe7-util';
 import {
     OnInit, OnChanges,
     AfterViewInit, AfterContentChecked,
-    SimpleChange, SimpleChanges, DoCheck,
+    SimpleChanges, DoCheck,
     AfterContentInit, AfterViewChecked,
-    OnDestroy
+    OnDestroy, Injector,
+    NgZone, ChangeDetectorRef
 } from '@angular/core';
 
-export class Iwe7Base { }
+export class Iwe7Base {
+    name: string;
+}
 
 export class Iwe7Zone extends Iwe7Base {
     _zone: NgZone;
+    constructor(public injector: Injector, name?: string) {
+        super();
+        this.name = name;
+        if (!this.injector) {
+            console.log(this);
+        }
+        this._zone = this.injector.get(NgZone);
+    }
     runOutsideAngular<T>(fn: (...args: any[]) => T): T {
         return this._zone.runOutsideAngular(fn);
     }
@@ -34,6 +43,9 @@ export type Iwe7CycType =
 
 export class Iwe7Cyc extends Iwe7Zone {
     _cyc: Map<Iwe7CycType, Subject<any>> = new Map();
+    constructor(injector: Injector, name?: string) {
+        super(injector, name);
+    }
     getCyc(name: Iwe7CycType, isSubject: boolean = false, hasTakeUntil: boolean = true): Observable<any> {
         if (!this._cyc.has(name)) {
             if (name === 'ngOnDestroy') {
@@ -95,9 +107,8 @@ export class Iwe7Core extends Iwe7Cyc implements
     OnDestroy {
     _cd: ChangeDetectorRef;
     _hasChange: boolean = false;
-    constructor(public injector: Injector) {
-        super();
-        this._zone = this.injector.get(NgZone);
+    constructor(injector: Injector, name?: string) {
+        super(injector, name);
         this._cd = this.injector.get(ChangeDetectorRef);
     }
     ngOnChanges(changes: SimpleChanges) {
