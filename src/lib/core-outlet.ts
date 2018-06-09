@@ -1,19 +1,15 @@
-import { inject } from '@angular/core/testing';
 import { DOCUMENT } from '@angular/common';
 import {
-    ViewChild, ComponentRef,
+    ComponentRef,
     EmbeddedViewRef, ElementRef,
-    Injector, ɵComponentType as ComponentType,
-    ViewContainerRef, TemplateRef, AfterViewInit,
-    ComponentFactoryResolver, ApplicationRef, Renderer2
+    Injector, ComponentFactoryResolver,
+    ApplicationRef, Renderer2
 } from '@angular/core';
 import {
-    BasePortalOutlet, PortalHostDirective,
-    ComponentPortal, TemplatePortal, DomPortalHost,
-    Portal
+    BasePortalOutlet, Portal,
+    ComponentPortal, TemplatePortal
 } from '@angular/cdk/portal';
 
-import { throwContentAlreadyAttachedError } from './util';
 
 export class ElementRefPortal<T> extends Portal<T> {
     constructor(public ele: Element, public outletElement?: Element) {

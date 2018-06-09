@@ -1,4 +1,4 @@
-import { ControlValueAccessor, DefaultValueAccessor } from '@angular/forms';
+import { ControlValueAccessor } from '@angular/forms';
 import { Constructor } from '../interface';
 import { Iwe7Core } from '../iwe7-core.component';
 export function mixinControlValueAccessor<T extends Constructor<Iwe7Core>>(base: T): Constructor<{}> & T {

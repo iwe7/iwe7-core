@@ -7,8 +7,6 @@ import {
 export abstract class Core<State> extends BehaviorSubject<State> { }
 
 
-
-
 export abstract class CoreCyc<State> extends Core<State>
     implements OnInit, OnDestroy, OnChanges,
     AfterViewChecked, AfterContentChecked,
