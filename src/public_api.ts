@@ -7,3 +7,4 @@ export * from './lib/interface';
 export * from './lib/mixins/mixin-control-value-accessor';
 export * from './lib/iwe7-platform';
 export * from './lib/custom-injector';
+export * from './lib/core-show-hide';
