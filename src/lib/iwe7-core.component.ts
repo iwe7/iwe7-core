@@ -154,6 +154,9 @@ export class Iwe7Core extends Iwe7Cyc implements
         this.runOutsideAngular(() => {
             this.setCyc('ngOnDestroy', this, true);
         });
+        this._cyc.forEach(item => {
+            item.complete();
+        });
     }
 }
 
